@@ -100,8 +100,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         nvsurfaceview.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                //如果一开始就点击surfaceview，开始播放第一首歌，防止报错
-                if (visualNums==0){
+                //如果一开始就点击surfaceview且媒体并没有播放，开始播放第一首歌，防止报错
+                if (visualNums==0 && !mediaPlayer.isPlaying()){
                     currnetPlayPosition = currnetPlayPosition + 1;
                     LocalMusicBean musicBean = mDatas.get(currnetPlayPosition);
                     playMusicInBean(musicBean);
