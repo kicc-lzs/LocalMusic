@@ -36,6 +36,8 @@ import me.bogerchan.niervisualizer.NierVisualizerManager;
 import me.bogerchan.niervisualizer.renderer.IRenderer;
 import me.bogerchan.niervisualizer.renderer.circle.CircleBarRenderer;
 import me.bogerchan.niervisualizer.renderer.columnar.ColumnarType1Renderer;
+import me.bogerchan.niervisualizer.renderer.columnar.ColumnarType2Renderer;
+import me.bogerchan.niervisualizer.renderer.columnar.ColumnarType3Renderer;
 import me.bogerchan.niervisualizer.renderer.columnar.ColumnarType4Renderer;
 import me.bogerchan.niervisualizer.util.NierAnimator;
 
@@ -65,6 +67,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     NierVisualizerManager visualizerManager;//音乐可视化组件
 
+    int visualNums;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -83,6 +87,31 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         loadLoalMusicData();
         //设置每一项的点击事件
         setEventListener();
+
+        //长按跳出底部模态框功能 TODO
+        nvsurfaceview.setOnLongClickListener(new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                new BtnBottomDialog().show(getSupportFragmentManager(), "tag");
+                return true;
+            }
+        });
+        //点按切换频谱可视化UI
+        nvsurfaceview.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                //如果一开始就点击surfaceview，开始播放第一首歌，防止报错
+                if (visualNums==0){
+                    currnetPlayPosition = currnetPlayPosition + 1;
+                    LocalMusicBean musicBean = mDatas.get(currnetPlayPosition);
+                    playMusicInBean(musicBean);
+                }else {
+                    //否则为更新可视化UI
+                    LocalMusicBean musicBean = mDatas.get(currnetPlayPosition);
+                    playMusicInBeanUI(musicBean);
+                }
+            }
+        });
     }
 
     @Override
@@ -130,6 +159,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     playMusicInBean(nextBean);
                     break;
                 }
+                //TODO 这样无法触发底部模态框 BtnBottomDialog
+//            case R.id.nvsurfaceview:
+//                new BtnBottomDialog().show(getSupportFragmentManager(), "tag");
+//                break;
         }
     }
 
@@ -173,7 +206,18 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     }
 
     /***
-     * 提取冗余的代码：更新可视化视图
+     * 提取冗余的代码：只更新可视化视图
+     * @param musicBean
+     */
+    public void playMusicInBeanUI(LocalMusicBean musicBean) {
+        //获取歌曲autoSessionID并传递给
+        int autoSessionID = mediaPlayer.getAudioSessionId();
+        updateMusicVisualization(autoSessionID);
+        AUTO_SESSION_ID = autoSessionID;
+    }
+
+    /***
+     * 提取冗余的代码：更新可视化视图并播放下一首
      * @param musicBean
      */
     public void playMusicInBean(LocalMusicBean musicBean) {
@@ -292,6 +336,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         nvsurfaceview = findViewById(R.id.nvsurfaceview);
         nvsurfaceview.setZOrderOnTop(true);
         nvsurfaceview.getHolder().setFormat(PixelFormat.TRANSLUCENT);
+
     }
 
     /**
@@ -300,12 +345,63 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
      * @param autoSessionID mediaPlayer.getAudioSessionId()
      */
     void updateMusicVisualization(int autoSessionID) {
+        visualizerManagerInit(autoSessionID);
+
+        //获取自定义样式
+        //CircleBarRenderer circleBarRenderer = getMyCircleBarRenderer();
+
+        //开始渲染，ColumnarType4Renderer()为经典柱形图
+
+        //TODO 此为判断+显示u可视化ui，可知每一次都需要销毁+初始化 visualizerManager
+        if (visualNums==0) {
+            visualizerManager.start(nvsurfaceview, new IRenderer[]{new ColumnarType1Renderer()});
+            visualNums++;
+        }else if (visualNums==1){
+            visualizerManagerInit(autoSessionID);
+            visualizerManager.start(nvsurfaceview, new IRenderer[]{new ColumnarType3Renderer()});
+            visualNums++;
+        }else if (visualNums==2){
+            visualizerManagerInit(autoSessionID);
+            visualizerManager.start(nvsurfaceview, new IRenderer[]{new CircleBarRenderer(),new ColumnarType1Renderer()});
+            visualNums++;
+        }else {
+            visualizerManagerInit(autoSessionID);
+            visualizerManager.start(nvsurfaceview, new IRenderer[]{new CircleBarRenderer(),new ColumnarType4Renderer()});
+            visualNums=0;
+        }
+    }
+
+    /***
+     * 提取visualizerManager初始化方法，避免冗余
+     * @param autoSessionID
+     */
+    private void visualizerManagerInit(int autoSessionID) {
         visualizerManager.release();//当每次选中新的歌曲item时，销毁框架实例，释放资源
         visualizerManager = new NierVisualizerManager();//可视化控件初始化
         visualizerManager.init(autoSessionID);//给visualizer传入autoSessionID
-        //开始渲染，ColumnarType4Renderer()为经典柱形图
-        visualizerManager.start(nvsurfaceview, new IRenderer[]{ new ColumnarType4Renderer()});
     }
+
+    /**
+     * TODO 音频可视化UI自定义绘制样式 1
+     *
+     * @return 圆形可视化UI
+     */
+    private CircleBarRenderer getMyCircleBarRenderer() {
+        Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.parseColor("#FFFFFF"));
+        return new CircleBarRenderer(
+                paint, 4,
+                CircleBarRenderer.Type.TYPE_A,
+                0.9f,
+                .8f,
+                new NierAnimator(
+                        new LinearInterpolator(),
+                        20000,
+                        new float[]{0f, -360f},
+                        true)
+        );
+    }
+
 
     /**
      * 获取权限

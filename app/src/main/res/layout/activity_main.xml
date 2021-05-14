@@ -10,6 +10,9 @@
         android:layout_width="match_parent"
         android:layout_height="232dp"
         android:layout_marginTop="20dp"
+        android:clickable="true"
+        android:foreground="?attr/selectableItemBackground"
+        android:focusable="true"
          />
 
     <RelativeLayout
@@ -89,7 +92,6 @@
 
     <androidx.recyclerview.widget.RecyclerView
         android:layout_below="@id/nvsurfaceview"
-        android:layout_marginTop="-116dp"
         android:id="@+id/local_music_rv"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
